@@ -1,42 +1,53 @@
 import streamlit as st
 import joblib
+import os
 
-# --- LOAD MODEL AND VECTORIZER ---
-# Make sure these files are in your repo root
-model = joblib.load("fake_news_model.pkl")
-vectorizer = joblib.load("tfidf_vectorizer.pkl")
+# --- Load model and vectorizer ---
+base_path = os.path.dirname(__file__)
 
-# --- STREAMLIT APP ---
-st.set_page_config(page_title="Fake News Detection", layout="wide")
-st.title("📰 Fake News Detection App")
-st.write("Enter the news text below, and the model will tell you if it's Fake or Real.")
+model_path = os.path.join(base_path, "fake_news_model.pkl")
+vectorizer_path = os.path.join(base_path, "tfidf_vectorizer.pkl")
 
-# Text input
-news_text = st.text_area("News Text", height=200)
+try:
+    model = joblib.load(model_path)
+    vectorizer = joblib.load(vectorizer_path)
+except FileNotFoundError:
+    model = joblib.load("fake_news_model.pkl")
+    vectorizer = joblib.load("tfidf_vectorizer.pkl")
 
-# Predict button
-if st.button("Predict"):
-    if news_text.strip():  # check user input
-        # Transform text using TF-IDF
-        vec = vectorizer.transform([news_text])
-        prediction = model.predict(vec)[0]
-        probability = model.predict_proba(vec).max()  # confidence
+# --- Streamlit UI ---
+st.title("FAKE NEWS DETECTION")
+st.write("Enter a news article and the model will predict whether it is Fake or Real.")
 
-        if prediction == 0:
-            st.error(f"Prediction: Fake News ❌\nConfidence: {probability:.2%}")
+with st.form("news_form"):
+    st.subheader("Enter News Article")
+
+    news_text = st.text_area("News Text")
+
+    submit_button = st.form_submit_button("Predict")
+
+if submit_button:
+
+    if news_text.strip() == "":
+        st.warning("Please enter some news text.")
+    else:
+        input_data = vectorizer.transform([news_text])
+
+        prediction = model.predict(input_data)
+        probabilities = model.predict_proba(input_data)
+
+        st.subheader("Prediction Result")
+
+        if prediction[0] == 0:
+            st.error("The news is predicted as: FAKE ❌")
         else:
-            st.success(f"Prediction: Real News ✅\nConfidence: {probability:.2%}")
-    else:
-        st.warning("Please enter some text to predict.")
+            st.success("The news is predicted as: REAL ✅")
 
-# Optional: example news button
-if st.button("Try Example News"):
-    example = "Donald Trump just tweeted something shocking again."
-    vec = vectorizer.transform([example])
-    prediction = model.predict(vec)[0]
-    probability = model.predict_proba(vec).max()
+        st.subheader("Prediction Confidence")
 
-    if prediction == 0:
-        st.error(f"Example Prediction: Fake News ❌\nConfidence: {probability:.2%}")
-    else:
-        st.success(f"Example Prediction: Real News ✅\nConfidence: {probability:.2%}")
+        class_names = model.classes_
+
+        for name, prob in zip(class_names, probabilities[0]):
+            percent = prob * 100
+            st.write(f"Class {name}: {percent:.2f}%")
+            st.progress(prob)
