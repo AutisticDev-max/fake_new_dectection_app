@@ -1,52 +1,76 @@
 import streamlit as st
-import pandas as pd
 import joblib
 import os
 
-# Get the current folder path
+# Page configuration
+st.set_page_config(
+    page_title="Fake News Detector",
+    page_icon="📰",
+    layout="centered"
+)
+
+# Get current folder
 base_path = os.path.dirname(__file__)
 
-# Model paths
 model_path = os.path.join(base_path, "fake_news_model.pkl")
 vectorizer_path = os.path.join(base_path, "tfidf_vectorizer.pkl")
 
-# Load model and vectorizer safely
+# Load model and vectorizer
 try:
     model = joblib.load(model_path)
     vectorizer = joblib.load(vectorizer_path)
-except FileNotFoundError:
+except:
     model = joblib.load("fake_news_model.pkl")
     vectorizer = joblib.load("tfidf_vectorizer.pkl")
 
-# App Title
-st.title("Fake News Detection System")
+# Title
+st.title("📰 Fake News Detection App")
 
-st.write("Enter a news article below and the model will predict whether it is **Fake** or **Real**.")
+st.write(
+    "This application uses Machine Learning to classify a news article as **Fake** or **Real**."
+)
 
-# Input form
-with st.form("news_form"):
-    
-    news_text = st.text_area("Enter News Article Text")
+st.divider()
 
-    submit_button = st.form_submit_button("Predict")
+# Input section
+st.subheader("Enter News Article")
 
-# Prediction section
-if submit_button:
+news_text = st.text_area(
+    "Paste a news article below:",
+    height=200
+)
+
+# Prediction
+if st.button("Analyze News"):
 
     if news_text.strip() == "":
         st.warning("Please enter some news text.")
-    
     else:
-        # Transform text using TF-IDF
+
         vectorized_text = vectorizer.transform([news_text])
 
-        # Make prediction
         prediction = model.predict(vectorized_text)
+        probability = model.predict_proba(vectorized_text)
 
-        # Display result
+        fake_prob = probability[0][0]
+        real_prob = probability[0][1]
+
+        st.divider()
         st.subheader("Prediction Result")
 
         if prediction[0] == 0:
-            st.error("This news is predicted to be **Fake News**")
+            st.error("🚨 This news is predicted to be **FAKE**")
         else:
-            st.success("This news is predicted to be **Real News**")
+            st.success("✅ This news is predicted to be **REAL**")
+
+        st.subheader("Model Confidence")
+
+        st.write(f"Fake News Probability: {fake_prob*100:.2f}%")
+        st.progress(fake_prob)
+
+        st.write(f"Real News Probability: {real_prob*100:.2f}%")
+        st.progress(real_prob)
+
+st.divider()
+
+st.caption("Machine Learning Fake News Detection Project")
